@@ -1,9 +1,12 @@
 #!/usr/bin/python3
+
 import netCDF4 as nc
 import numpy as np
 from datetime import date
 from marineHeatWaves import detect
-fn = 'Port_Hacking_Site.nc'
+import csv
+f = 'Port_Hacking_site'
+fn = f+'.nc'
 ds = nc.Dataset(fn)
 time=ds['time']
 #1981-1-1
@@ -42,23 +45,40 @@ while i <= dtime[-1]:
         index = dtime.index(i)
         t_temp = 0
         t_ntemp = 0
-        for latitude in range(0,4):
+        for latitude in range(1,6):
 
-            for longitude in range (130,134):
+            for longitude in range (132,137):
                 tt = ds['sea_surface_temperature'][index,latitude,longitude].data.item(0) 
                 if tt != 0.0:
                     t_temp += tt
                     t_ntemp += 1
         avg_temp = 0
         if t_ntemp != 0:
-
-            avg_temp = t_temp / t_ntemp
-        temp.append(avg_temp )
+            avg_temp = (t_temp / t_ntemp) - 273.16
+        else:
+            avg_temp = np.nan
+        temp.append(avg_temp)
     else:
-        temp.append(0)    
+        temp.append(np.nan)    
     i+=1
 
 t = np.array(t)
 temp = np.array(temp)
-mhws = detect(t,temp)
-print(mhws[0])
+mhws = detect(t,temp,climatologyPeriod=[1992,2020], maxPadLength=4)
+
+
+start = [date.fromordinal(int(st)) for st in mhws[0]['time_start']]
+end = [date.fromordinal(int(st)) for st in mhws[0]['time_end']]
+duration = mhws[0]['duration']
+peak_time = [date.fromordinal(int(st)) for st in mhws[0]['time_peak']]
+int_max = mhws[0]['intensity_max']
+int_cum = mhws[0]['intensity_cumulative']
+int_mean = mhws[0]['intensity_mean']
+
+with open(f+'_analys.csv','w',newline = '') as a_file:
+    writer = csv.writer(a_file)
+    writer.writerow(["index_number","time_start","time_end","duration","peak_time","max_intensity","mean_intensity","cumulative_intensity"])
+    i = 0
+    while i < len(start):
+        writer.writerow([i+1,start[i],end[i],duration[i],peak_time[i],int_max[i],int_mean[i],int_cum[i]])
+        i += 1
